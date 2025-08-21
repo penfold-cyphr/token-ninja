@@ -55,6 +55,44 @@
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
 
+        #timer {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        #timer.warning {
+            color: #ff6666;
+            animation: pulse 0.5s infinite;
+        }
+
+        #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 300;
+        }
+
+        #finalScore {
+            font-size: 64px;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+            margin-bottom: 20px;
+        }
+
         #startScreen {
             position: absolute;
             top: 0;
@@ -76,7 +114,8 @@
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
 
-        #startScreen button {
+        #startScreen button,
+        #playAgainButton {
             padding: 20px 40px;
             font-size: 24px;
             background: linear-gradient(45deg, #ffd700, #ffed4e);
@@ -93,7 +132,9 @@
         }
 
         #startScreen button:hover,
-        #startScreen button:active {
+        #startScreen button:active,
+        #playAgainButton:hover,
+        #playAgainButton:active {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(0,0,0,0.4);
             background: linear-gradient(45deg, #ffed4e, #ffd700);
@@ -209,17 +250,20 @@
         <div id="ui">
             <div id="score">Score: 0</div>
             <div id="combo"></div>
+            <div id="timer">45</div>
         </div>
         <div id="startScreen">
-            <h1>🪙 3D Coin Ninja</h1>
-            <p>Slice the flying coins with your mouse or finger!</p>
-            <p style="color: #ff6666; font-weight: bold;">⚠️ AVOID THE PULSING RED BOMB COINS! ⚠️</p>
-            <p style="font-size: 14px; color: #cccccc;">📱 Mobile optimized - swipe with your finger!</p>
+            <h1>Alt Token Ninja</h1>
             <button id="startButton">Start Game</button>
         </div>
         <div id="countdownScreen">
             <div id="countdownNumber">3</div>
             <p style="font-size: 24px; margin-top: 20px;">Get Ready!</p>
+        </div>
+        <div id="gameOverScreen">
+            <h2 style="font-size: 48px; margin-bottom: 30px;">Game Over!</h2>
+            <div id="finalScore">0</div>
+            <button id="playAgainButton">Start Game</button>
         </div>
     </div>
 
@@ -228,7 +272,8 @@
         // Game variables
         let scene, camera, renderer, coins = [], particles = [];
         let score = 0, combo = 0, comboTimer = 0;
-        let gameStarted = false;
+        let gameStarted = false, gameTime = 45, gameTimer = null;
+        let coinSpawners = []; // Track spawner intervals
         let mousePos = { x: 0, y: 0 };
         let lastMousePos = { x: 0, y: 0 };
         let trailPoints = [];
@@ -276,28 +321,34 @@
 
         function setupStartButton() {
             const startButton = document.getElementById('startButton');
-            let buttonPressed = false;
+            const playAgainButton = document.getElementById('playAgainButton');
             
-            // Handle click events
+            // Handle start button
             startButton.addEventListener('click', (e) => {
                 e.preventDefault();
-                if (!buttonPressed) {
-                    buttonPressed = true;
-                    startCountdown();
-                }
-            });
-            
-            // Handle touch events for mobile
-            startButton.addEventListener('touchstart', (e) => {
-                e.preventDefault();
+                resetGame();
+                startCountdown();
             });
             
             startButton.addEventListener('touchend', (e) => {
                 e.preventDefault();
-                if (!buttonPressed) {
-                    buttonPressed = true;
-                    startCountdown();
-                }
+                resetGame();
+                startCountdown();
+            });
+            
+            // Handle play again button
+            playAgainButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.getElementById('gameOverScreen').style.display = 'none';
+                resetGame();
+                startCountdown();
+            });
+            
+            playAgainButton.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                document.getElementById('gameOverScreen').style.display = 'none';
+                resetGame();
+                startCountdown();
             });
         }
 
@@ -735,6 +786,15 @@
 
         function updateUI() {
             document.getElementById('score').textContent = `Score: ${score}`;
+            document.getElementById('timer').textContent = gameTime;
+            
+            // Add warning styling when time is low
+            const timerElement = document.getElementById('timer');
+            if (gameTime <= 10) {
+                timerElement.classList.add('warning');
+            } else {
+                timerElement.classList.remove('warning');
+            }
             
             const comboElement = document.getElementById('combo');
             if (combo > 1 && comboTimer > 0) {
@@ -746,10 +806,9 @@
         }
 
         function startCountdown() {
-            // Prevent multiple calls
-            if (document.getElementById('startScreen').style.display === 'none') return;
-            
+            // Prevent multiple calls and hide other screens
             document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('gameOverScreen').style.display = 'none';
             document.getElementById('countdownScreen').style.display = 'flex';
             
             let count = 3;
@@ -777,11 +836,26 @@
 
         function startGame() {
             gameStarted = true;
+            gameTime = 45;
             document.getElementById('countdownScreen').style.display = 'none';
             document.body.style.cursor = 'none';
             
+            // Clear any existing spawners
+            coinSpawners.forEach(interval => clearInterval(interval));
+            coinSpawners = [];
+            
+            // Start game timer
+            gameTimer = setInterval(() => {
+                gameTime--;
+                updateUI();
+                
+                if (gameTime <= 0) {
+                    endGame();
+                }
+            }, 1000);
+            
             // Primary coin spawner - high frequency
-            setInterval(() => {
+            coinSpawners.push(setInterval(() => {
                 if (gameStarted && Math.random() < 0.8) { // 80% chance
                     createCoin();
                     
@@ -793,23 +867,61 @@
                         setTimeout(() => createCoin(), 200);
                     }
                 }
-            }, 500);
+            }, 500));
             
             // Secondary coin spawner for variety
-            setInterval(() => {
+            coinSpawners.push(setInterval(() => {
                 if (gameStarted && Math.random() < 0.5) { // 50% chance
                     createCoin();
                 }
-            }, 750);
+            }, 750));
             
             // Burst spawner - occasional coin showers
-            setInterval(() => {
+            coinSpawners.push(setInterval(() => {
                 if (gameStarted && Math.random() < 0.2) { // 20% chance for burst
                     for (let i = 0; i < 3; i++) {
                         setTimeout(() => createCoin(), i * 150);
                     }
                 }
-            }, 2000);
+            }, 2000));
+        }
+
+        function endGame() {
+            gameStarted = false;
+            
+            // Clear all intervals
+            clearInterval(gameTimer);
+            coinSpawners.forEach(interval => clearInterval(interval));
+            coinSpawners = [];
+            
+            document.body.style.cursor = 'auto';
+            
+            // Clear all coins and particles
+            coins.forEach(coin => scene.remove(coin));
+            particles.forEach(particle => scene.remove(particle));
+            coins = [];
+            particles = [];
+            
+            // Clear trail
+            trailPoints = [];
+            document.getElementById('trail').innerHTML = '';
+            
+            // Show game over screen
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('gameOverScreen').style.display = 'flex';
+        }
+
+        function resetGame() {
+            score = 0;
+            combo = 0;
+            comboTimer = 0;
+            gameTime = 45;
+            trailPoints = [];
+            
+            // Clear trail visual
+            document.getElementById('trail').innerHTML = '';
+            
+            updateUI();
         }
 
         function updateTrailFading() {
