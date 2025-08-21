@@ -77,20 +77,54 @@
         }
 
         #startScreen button {
-            padding: 15px 30px;
-            font-size: 20px;
+            padding: 20px 40px;
+            font-size: 24px;
             background: linear-gradient(45deg, #ffd700, #ffed4e);
             border: none;
-            border-radius: 25px;
+            border-radius: 30px;
             cursor: pointer;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             transition: all 0.3s ease;
             pointer-events: all;
+            min-width: 200px;
+            min-height: 60px;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        #startScreen button:hover {
+        #startScreen button:hover,
+        #startScreen button:active {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+            background: linear-gradient(45deg, #ffed4e, #ffd700);
+        }
+
+        #countdownScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 300;
+        }
+
+        #countdownNumber {
+            font-size: 120px;
+            font-weight: bold;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+            animation: pulse 1s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
         }
 
         #trail {
@@ -181,7 +215,11 @@
             <p>Slice the flying coins with your mouse or finger!</p>
             <p style="color: #ff6666; font-weight: bold;">⚠️ AVOID THE PULSING RED BOMB COINS! ⚠️</p>
             <p style="font-size: 14px; color: #cccccc;">📱 Mobile optimized - swipe with your finger!</p>
-            <button onclick="startGame()">Start Game</button>
+            <button id="startButton">Start Game</button>
+        </div>
+        <div id="countdownScreen">
+            <div id="countdownNumber">3</div>
+            <p style="font-size: 24px; margin-top: 20px;">Get Ready!</p>
         </div>
     </div>
 
@@ -226,11 +264,41 @@
             directionalLight.shadow.mapSize.height = 2048;
             scene.add(directionalLight);
 
-            // Mouse events
+            // Mouse and touch events
             setupMouseEvents();
+            
+            // Start button events
+            setupStartButton();
 
             // Start render loop
             animate();
+        }
+
+        function setupStartButton() {
+            const startButton = document.getElementById('startButton');
+            let buttonPressed = false;
+            
+            // Handle click events
+            startButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (!buttonPressed) {
+                    buttonPressed = true;
+                    startCountdown();
+                }
+            });
+            
+            // Handle touch events for mobile
+            startButton.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+            });
+            
+            startButton.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                if (!buttonPressed) {
+                    buttonPressed = true;
+                    startCountdown();
+                }
+            });
         }
 
         function setupMouseEvents() {
@@ -677,17 +745,71 @@
             }
         }
 
+        function startCountdown() {
+            // Prevent multiple calls
+            if (document.getElementById('startScreen').style.display === 'none') return;
+            
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('countdownScreen').style.display = 'flex';
+            
+            let count = 3;
+            const countdownElement = document.getElementById('countdownNumber');
+            
+            const countdownInterval = setInterval(() => {
+                countdownElement.style.animation = 'none';
+                countdownElement.offsetHeight; // Trigger reflow
+                countdownElement.style.animation = 'pulse 1s ease-in-out';
+                
+                if (count === 0) {
+                    countdownElement.textContent = 'GO!';
+                    countdownElement.style.color = '#ffd700';
+                    setTimeout(() => {
+                        clearInterval(countdownInterval);
+                        startGame();
+                    }, 1000);
+                } else {
+                    countdownElement.textContent = count;
+                    countdownElement.style.color = count === 1 ? '#ff6666' : '#ffffff';
+                    count--;
+                }
+            }, 1000);
+        }
+
         function startGame() {
             gameStarted = true;
-            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('countdownScreen').style.display = 'none';
             document.body.style.cursor = 'none';
             
-            // Start spawning coins
+            // Primary coin spawner - high frequency
             setInterval(() => {
-                if (gameStarted && Math.random() < 0.3) {
+                if (gameStarted && Math.random() < 0.8) { // 80% chance
+                    createCoin();
+                    
+                    // Sometimes spawn multiple coins at once
+                    if (Math.random() < 0.3) {
+                        setTimeout(() => createCoin(), 100);
+                    }
+                    if (Math.random() < 0.15) {
+                        setTimeout(() => createCoin(), 200);
+                    }
+                }
+            }, 500);
+            
+            // Secondary coin spawner for variety
+            setInterval(() => {
+                if (gameStarted && Math.random() < 0.5) { // 50% chance
                     createCoin();
                 }
-            }, 800);
+            }, 750);
+            
+            // Burst spawner - occasional coin showers
+            setInterval(() => {
+                if (gameStarted && Math.random() < 0.2) { // 20% chance for burst
+                    for (let i = 0; i < 3; i++) {
+                        setTimeout(() => createCoin(), i * 150);
+                    }
+                }
+            }, 2000);
         }
 
         function updateTrailFading() {
