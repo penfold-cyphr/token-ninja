@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Coin Ninja</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            cursor: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #gameCanvas {
+            display: block;
+        }
+
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        #score {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        #combo {
+            position: absolute;
+            top: 80px;
+            left: 30px;
+            font-size: 18px;
+            color: #ffd700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        #startScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 200;
+        }
+
+        #startScreen h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        #startScreen button {
+            padding: 15px 30px;
+            font-size: 20px;
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            pointer-events: all;
+        }
+
+        #startScreen button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+
+        #trail {
+            position: absolute;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .trail-segment {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: radial-gradient(circle, #fff 0%, #ffd700 50%, #ff6b6b 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 15px #ffd700, 0 0 25px rgba(255, 215, 0, 0.5);
+        }
+
+        .points-animation {
+            position: absolute;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            pointer-events: none;
+            z-index: 150;
+            animation: floatUp 1s ease-out forwards;
+        }
+
+        .points-positive {
+            color: #ffd700;
+        }
+
+        .points-negative {
+            color: #ff4444;
+            animation: shakeAndFloat 1s ease-out forwards;
+        }
+
+        @keyframes shakeAndFloat {
+            0% {
+                opacity: 1;
+                transform: translateY(0px) scale(1) translateX(0px);
+            }
+            10% { transform: translateY(-10px) scale(1.1) translateX(-5px); }
+            20% { transform: translateY(-20px) scale(1.2) translateX(5px); }
+            30% { transform: translateY(-30px) scale(1.3) translateX(-3px); }
+            40% { transform: translateY(-40px) scale(1.4) translateX(3px); }
+            100% {
+                opacity: 0;
+                transform: translateY(-80px) scale(1.5) translateX(0px);
+            }
+        }
+
+        @keyframes floatUp {
+            0% {
+                opacity: 1;
+                transform: translateY(0px) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-80px) scale(1.5);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <div id="trail"></div>
+        <div id="ui">
+            <div id="score">Score: 0</div>
+            <div id="combo"></div>
+        </div>
+        <div id="startScreen">
+            <h1>🪙 3D Coin Ninja</h1>
+            <p>Slice the flying coins with your mouse!</p>
+            <p style="color: #ff6666; font-weight: bold;">⚠️ AVOID THE PULSING RED BOMB COINS! ⚠️</p>
+            <button onclick="startGame()">Start Game</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Game variables
+        let scene, camera, renderer, coins = [], particles = [];
+        let score = 0, combo = 0, comboTimer = 0;
+        let gameStarted = false;
+        let mousePos = { x: 0, y: 0 };
+        let lastMousePos = { x: 0, y: 0 };
+        let trailPoints = [];
+
+        // Initialize the game
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.fog = new THREE.Fog(0x1e3c72, 50, 200);
+
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 30);
+
+            // Create renderer
+            const canvas = document.getElementById('gameCanvas');
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x1e3c72);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(10, 10, 10);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+
+            // Mouse events
+            setupMouseEvents();
+
+            // Start render loop
+            animate();
+        }
+
+        function setupMouseEvents() {
+            document.addEventListener('mousemove', (event) => {
+                lastMousePos.x = mousePos.x;
+                lastMousePos.y = mousePos.y;
+                
+                mousePos.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mousePos.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+                if (gameStarted) {
+                    updateTrail(event.clientX, event.clientY);
+                    checkCoinSlicing();
+                }
+            });
+        }
+
+        function updateTrail(x, y) {
+            const trail = document.getElementById('trail');
+            
+            // Add new trail point
+            trailPoints.push({ x, y, time: Date.now() });
+            
+            // Remove old trail points (longer duration for better visibility)
+            trailPoints = trailPoints.filter(point => Date.now() - point.time < 800);
+            
+            // Clear and redraw trail
+            trail.innerHTML = '';
+            trailPoints.forEach((point, index) => {
+                const segment = document.createElement('div');
+                segment.className = 'trail-segment';
+                segment.style.left = (point.x - 6) + 'px'; // Center the larger segment
+                segment.style.top = (point.y - 6) + 'px';
+                
+                const age = Date.now() - point.time;
+                const opacity = Math.max(0, 1 - age / 800);
+                const scale = Math.max(0.2, 1 - age / 800);
+                
+                segment.style.opacity = opacity;
+                segment.style.transform = `scale(${scale})`;
+                
+                trail.appendChild(segment);
+            });
+        }
+
+        function showPointsAnimation(worldPos, points) {
+            // Convert world position to screen coordinates
+            const vector = worldPos.clone();
+            vector.project(camera);
+            
+            const screenX = (vector.x * 0.5 + 0.5) * window.innerWidth;
+            const screenY = (vector.y * -0.5 + 0.5) * window.innerHeight;
+            
+            // Create points element
+            const pointsElement = document.createElement('div');
+            pointsElement.className = 'points-animation';
+            
+            if (points > 0) {
+                pointsElement.textContent = '+' + points;
+                pointsElement.classList.add('points-positive');
+            } else {
+                pointsElement.textContent = points.toString();
+                pointsElement.classList.add('points-negative');
+            }
+            
+            pointsElement.style.left = screenX + 'px';
+            pointsElement.style.top = screenY + 'px';
+            
+            document.body.appendChild(pointsElement);
+            
+            // Remove after animation
+            setTimeout(() => {
+                if (pointsElement.parentNode) {
+                    pointsElement.parentNode.removeChild(pointsElement);
+                }
+            }, 1000);
+        }
+
+        function createCoin() {
+            const coinTypes = [
+                { color: 0xffd700, value: 10, type: 'gold' },     // Gold
+                { color: 0xc0c0c0, value: 5, type: 'silver' },   // Silver
+                { color: 0xcd7f32, value: 3, type: 'bronze' },   // Bronze
+                { color: 0x4169e1, value: 15, type: 'special' }, // Special blue
+                { color: 0xff3333, value: -25, type: 'bomb' }    // Dangerous red bomb
+            ];
+            
+            // 70% chance for good coins, 30% chance for bomb
+            let type;
+            if (Math.random() < 0.7) {
+                type = coinTypes[Math.floor(Math.random() * 4)]; // Good coins only
+            } else {
+                type = coinTypes[4]; // Bomb coin
+            }
+            
+            // Create coin geometry
+            const geometry = new THREE.CylinderGeometry(1.5, 1.5, 0.3, 32);
+            let material;
+            
+            if (type.type === 'bomb') {
+                // Special material for bomb coins with pulsing effect
+                material = new THREE.MeshPhongMaterial({
+                    color: type.color,
+                    shininess: 100,
+                    specular: 0x444444,
+                    emissive: 0x220000 // Slight red glow
+                });
+            } else {
+                material = new THREE.MeshPhongMaterial({
+                    color: type.color,
+                    shininess: 100,
+                    specular: 0x222222
+                });
+            }
+            
+            const coin = new THREE.Mesh(geometry, material);
+            
+            // Position coin at bottom of screen
+            coin.position.x = (Math.random() - 0.5) * 40;
+            coin.position.y = -20;
+            coin.position.z = (Math.random() - 0.5) * 10;
+            
+            // Add physics properties
+            coin.velocity = {
+                x: (Math.random() - 0.5) * 4,
+                y: 15 + Math.random() * 5,
+                z: (Math.random() - 0.5) * 2
+            };
+            
+            coin.angularVelocity = {
+                x: (Math.random() - 0.5) * 0.2,
+                y: (Math.random() - 0.5) * 0.2,
+                z: (Math.random() - 0.5) * 0.2
+            };
+            
+            coin.gravity = -0.5;
+            coin.userData = { 
+                value: type.value, 
+                sliced: false, 
+                type: type.type,
+                pulseTime: 0 // For bomb pulsing effect
+            };
+            
+            scene.add(coin);
+            coins.push(coin);
+        }
+
+        function updateCoins() {
+            for (let i = coins.length - 1; i >= 0; i--) {
+                const coin = coins[i];
+                
+                if (coin.userData.sliced && !coin.userData.isFragment) continue;
+                
+                // Update position
+                coin.position.x += coin.velocity.x * 0.016;
+                coin.position.y += coin.velocity.y * 0.016;
+                coin.position.z += coin.velocity.z * 0.016;
+                
+                // Update rotation
+                coin.rotation.x += coin.angularVelocity.x;
+                coin.rotation.y += coin.angularVelocity.y;
+                coin.rotation.z += coin.angularVelocity.z;
+                
+                // Apply gravity
+                coin.velocity.y += coin.gravity * 0.016 * 60;
+                
+                // Bomb coin pulsing effect
+                if (coin.userData.type === 'bomb' && !coin.userData.sliced) {
+                    coin.userData.pulseTime += 0.1;
+                    const pulseIntensity = 0.5 + 0.3 * Math.sin(coin.userData.pulseTime);
+                    coin.material.emissive.setRGB(0.2 * pulseIntensity, 0, 0);
+                    
+                    // Scale pulsing
+                    const scale = 1 + 0.1 * Math.sin(coin.userData.pulseTime * 2);
+                    coin.scale.set(scale, scale, scale);
+                }
+                
+                // Remove coins that are too low
+                if (coin.position.y < -25) {
+                    scene.remove(coin);
+                    coins.splice(i, 1);
+                    
+                    // Only reset combo for non-sliced, non-fragment coins
+                    if (!coin.userData.sliced && !coin.userData.isFragment) {
+                        combo = 0;
+                        updateUI();
+                    }
+                }
+            }
+        }
+
+        function checkCoinSlicing() {
+            const mouseSpeed = Math.sqrt(
+                Math.pow(mousePos.x - lastMousePos.x, 2) + 
+                Math.pow(mousePos.y - lastMousePos.y, 2)
+            );
+            
+            if (mouseSpeed < 0.01) return; // Not moving fast enough
+            
+            coins.forEach(coin => {
+                if (coin.userData.sliced) return;
+                
+                // Convert coin position to screen coordinates
+                const vector = coin.position.clone();
+                vector.project(camera);
+                
+                const coinScreenX = vector.x;
+                const coinScreenY = vector.y;
+                
+                // Check if mouse path intersects coin
+                const distance = Math.sqrt(
+                    Math.pow(coinScreenX - mousePos.x, 2) + 
+                    Math.pow(coinScreenY - mousePos.y, 2)
+                );
+                
+                if (distance < 0.15 && mouseSpeed > 0.02) {
+                    sliceCoin(coin);
+                }
+            });
+        }
+
+        function sliceCoin(coin) {
+            if (coin.userData.sliced) return;
+            
+            coin.userData.sliced = true;
+            
+            if (coin.userData.type === 'bomb') {
+                // Handle bomb coin
+                const penalty = coin.userData.value; // Already negative
+                score = Math.max(0, score + penalty); // Don't go below 0
+                combo = 0; // Reset combo completely
+                comboTimer = 0;
+                
+                // Show negative points animation
+                showPointsAnimation(coin.position, penalty);
+                
+                // Create bomb explosion effect
+                createBombEffect(coin.position);
+                
+                // Screen shake effect
+                shakeScreen();
+                
+            } else {
+                // Handle normal coin
+                const basePoints = coin.userData.value;
+                const comboBonus = combo > 1 ? Math.floor(basePoints * (combo * 0.2)) : 0;
+                const totalPoints = basePoints + comboBonus;
+                
+                // Update score
+                score += totalPoints;
+                combo++;
+                comboTimer = 120; // 2 seconds at 60fps
+                
+                // Show points animation
+                showPointsAnimation(coin.position, totalPoints);
+                
+                // Create slice effect
+                createSliceEffect(coin.position);
+            }
+            
+            // Make coin fragments
+            createCoinFragments(coin);
+            
+            // Remove original coin immediately
+            scene.remove(coin);
+            const index = coins.indexOf(coin);
+            if (index > -1) coins.splice(index, 1);
+            
+            updateUI();
+        }
+
+        function createSliceEffect(position) {
+            for (let i = 0; i < 20; i++) {
+                const geometry = new THREE.SphereGeometry(0.05);
+                const material = new THREE.MeshBasicMaterial({
+                    color: 0xffd700,
+                    transparent: true,
+                    opacity: 1
+                });
+                
+                const particle = new THREE.Mesh(geometry, material);
+                particle.position.copy(position);
+                
+                particle.velocity = {
+                    x: (Math.random() - 0.5) * 8,
+                    y: (Math.random() - 0.5) * 8,
+                    z: (Math.random() - 0.5) * 8
+                };
+                
+                particle.life = 60; // 1 second at 60fps
+                
+                scene.add(particle);
+                particles.push(particle);
+            }
+        }
+
+        function createBombEffect(position) {
+            // Create more dramatic red explosion particles
+            for (let i = 0; i < 40; i++) {
+                const geometry = new THREE.SphereGeometry(0.08);
+                const material = new THREE.MeshBasicMaterial({
+                    color: Math.random() > 0.5 ? 0xff3333 : 0xff6666,
+                    transparent: true,
+                    opacity: 1
+                });
+                
+                const particle = new THREE.Mesh(geometry, material);
+                particle.position.copy(position);
+                
+                particle.velocity = {
+                    x: (Math.random() - 0.5) * 12,
+                    y: (Math.random() - 0.5) * 12,
+                    z: (Math.random() - 0.5) * 12
+                };
+                
+                particle.life = 90; // 1.5 seconds at 60fps
+                
+                scene.add(particle);
+                particles.push(particle);
+            }
+        }
+
+        function shakeScreen() {
+            // Screen shake effect by moving camera slightly
+            const originalPos = { x: camera.position.x, y: camera.position.y };
+            let shakeIntensity = 0.5;
+            let shakeDuration = 30; // 0.5 seconds at 60fps
+            
+            const shakeInterval = setInterval(() => {
+                camera.position.x = originalPos.x + (Math.random() - 0.5) * shakeIntensity;
+                camera.position.y = originalPos.y + (Math.random() - 0.5) * shakeIntensity;
+                
+                shakeIntensity *= 0.9; // Reduce shake over time
+                shakeDuration--;
+                
+                if (shakeDuration <= 0) {
+                    camera.position.x = originalPos.x;
+                    camera.position.y = originalPos.y;
+                    clearInterval(shakeInterval);
+                }
+            }, 16); // ~60fps
+        }
+
+        function createCoinFragments(coin) {
+            // Create two realistic halves of the coin
+            for (let i = 0; i < 2; i++) {
+                // Create half-coin geometry (semicircle)
+                const geometry = new THREE.CylinderGeometry(1.5, 1.5, 0.3, 16, 1, false, 0, Math.PI);
+                const material = coin.material.clone();
+                
+                const fragment = new THREE.Mesh(geometry, material);
+                
+                // Position fragments
+                fragment.position.copy(coin.position);
+                fragment.rotation.copy(coin.rotation);
+                
+                // Offset the halves slightly
+                const offset = i === 0 ? -0.3 : 0.3;
+                fragment.position.x += offset;
+                
+                // Set different velocities for each half
+                fragment.velocity = {
+                    x: coin.velocity.x + (i === 0 ? -4 : 4),
+                    y: coin.velocity.y + 1,
+                    z: coin.velocity.z + (Math.random() - 0.5) * 3
+                };
+                
+                fragment.angularVelocity = {
+                    x: (Math.random() - 0.5) * 0.3,
+                    y: (Math.random() - 0.5) * 0.3,
+                    z: (Math.random() - 0.5) * 0.3
+                };
+                
+                fragment.gravity = -0.5;
+                fragment.userData = { value: 0, sliced: true, isFragment: true };
+                
+                scene.add(fragment);
+                coins.push(fragment);
+            }
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const particle = particles[i];
+                
+                particle.position.x += particle.velocity.x * 0.016;
+                particle.position.y += particle.velocity.y * 0.016;
+                particle.position.z += particle.velocity.z * 0.016;
+                
+                particle.velocity.y -= 0.3; // Gravity
+                particle.life--;
+                
+                particle.material.opacity = particle.life / 60;
+                
+                if (particle.life <= 0) {
+                    scene.remove(particle);
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('score').textContent = `Score: ${score}`;
+            
+            const comboElement = document.getElementById('combo');
+            if (combo > 1 && comboTimer > 0) {
+                comboElement.textContent = `Combo: ${combo}x`;
+                comboElement.style.display = 'block';
+            } else {
+                comboElement.style.display = 'none';
+            }
+        }
+
+        function startGame() {
+            gameStarted = true;
+            document.getElementById('startScreen').style.display = 'none';
+            document.body.style.cursor = 'none';
+            
+            // Start spawning coins
+            setInterval(() => {
+                if (gameStarted && Math.random() < 0.3) {
+                    createCoin();
+                }
+            }, 800);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (gameStarted) {
+                updateCoins();
+                updateParticles();
+                
+                // Update combo timer
+                if (comboTimer > 0) {
+                    comboTimer--;
+                    if (comboTimer === 0) {
+                        combo = 0;
+                        updateUI();
+                    }
+                }
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Initialize the game
+        init();
+    </script>
+</body>
+</html>
