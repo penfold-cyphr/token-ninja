@@ -495,14 +495,14 @@
             
             // Position coin at bottom of screen (wider spawn area)
             coin.position.x = (Math.random() - 0.5) * 50; // Wider spawn
-            coin.position.y = -25; // Lower starting position
+            coin.position.y = -30; // Even lower starting position
             coin.position.z = (Math.random() - 0.5) * 15;
             
-            // Add physics properties with higher velocity for taller flight
+            // Add physics properties with much higher velocity for full screen height
             coin.velocity = {
-                x: (Math.random() - 0.5) * 6, // Wider horizontal spread
-                y: 20 + Math.random() * 8, // Much higher initial velocity
-                z: (Math.random() - 0.5) * 3
+                x: (Math.random() - 0.5) * 8, // Wider horizontal spread
+                y: 35 + Math.random() * 15, // Much higher initial velocity (was 20-28, now 35-50)
+                z: (Math.random() - 0.5) * 4
             };
             
             coin.angularVelocity = {
@@ -511,7 +511,7 @@
                 z: (Math.random() - 0.5) * 0.2
             };
             
-            coin.gravity = -0.4; // Slightly less gravity for higher flight
+            coin.gravity = -0.3; // Less gravity for higher flight (was -0.4)
             coin.userData = { 
                 value: type.value, 
                 sliced: false, 
