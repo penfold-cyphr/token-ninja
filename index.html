@@ -263,6 +263,20 @@
         <div id="gameOverScreen">
             <h2 style="font-size: 48px; margin-bottom: 30px;">Game Over!</h2>
             <div id="finalScore">0</div>
+            <div style="margin: 30px 0; color: #cccccc;">
+                <div style="margin: 10px 0; font-size: 20px;">
+                    <span style="color: #ffd700;">Alt Tokens Collected: </span>
+                    <span id="goodTokens" style="color: #4caf50;">0</span>
+                </div>
+                <div style="margin: 10px 0; font-size: 20px;">
+                    <span style="color: #ff6666;">Fake Tokens Hit: </span>
+                    <span id="badTokens" style="color: #f44336;">0</span>
+                </div>
+                <div style="margin: 10px 0; font-size: 18px; color: #888;">
+                    <span>Accuracy: </span>
+                    <span id="accuracy">0%</span>
+                </div>
+            </div>
             <button id="playAgainButton">Start Game</button>
         </div>
     </div>
@@ -274,6 +288,7 @@
         let score = 0, combo = 0, comboTimer = 0;
         let gameStarted = false, gameTime = 45, gameTimer = null;
         let coinSpawners = []; // Track spawner intervals
+        let goodTokensSliced = 0, badTokensSliced = 0; // Token statistics
         let mousePos = { x: 0, y: 0 };
         let lastMousePos = { x: 0, y: 0 };
         let trailPoints = [];
@@ -616,6 +631,9 @@
                 combo = 0; // Reset combo completely
                 comboTimer = 0;
                 
+                // Track bad token
+                badTokensSliced++;
+                
                 // Show negative points animation
                 showPointsAnimation(coin.position, penalty);
                 
@@ -635,6 +653,9 @@
                 score += totalPoints;
                 combo++;
                 comboTimer = 120; // 2 seconds at 60fps
+                
+                // Track good token
+                goodTokensSliced++;
                 
                 // Show points animation
                 showPointsAnimation(coin.position, totalPoints);
@@ -814,22 +835,38 @@
             let count = 3;
             const countdownElement = document.getElementById('countdownNumber');
             
-            const countdownInterval = setInterval(() => {
-                countdownElement.style.animation = 'none';
-                countdownElement.offsetHeight; // Trigger reflow
-                countdownElement.style.animation = 'pulse 1s ease-in-out';
-                
-                if (count === 0) {
-                    countdownElement.textContent = 'GO!';
-                    countdownElement.style.color = '#ffd700';
-                    setTimeout(() => {
-                        clearInterval(countdownInterval);
-                        startGame();
-                    }, 1000);
-                } else {
+            // Function to update display
+            function updateCountdown() {
+                if (count > 0) {
                     countdownElement.textContent = count;
                     countdownElement.style.color = count === 1 ? '#ff6666' : '#ffffff';
+                    countdownElement.style.animation = 'none';
+                    countdownElement.offsetHeight; // Trigger reflow
+                    countdownElement.style.animation = 'pulse 1s ease-in-out';
                     count--;
+                } else {
+                    countdownElement.textContent = 'GO!';
+                    countdownElement.style.color = '#ffd700';
+                    countdownElement.style.animation = 'none';
+                    countdownElement.offsetHeight; // Trigger reflow
+                    countdownElement.style.animation = 'pulse 1s ease-in-out';
+                    setTimeout(() => {
+                        startGame();
+                    }, 1000);
+                    return; // Stop the interval
+                }
+            }
+            
+            // Show first number immediately
+            updateCountdown();
+            
+            // Continue countdown every second
+            const countdownInterval = setInterval(() => {
+                if (count >= 0) {
+                    updateCountdown();
+                    if (count < 0) {
+                        clearInterval(countdownInterval);
+                    }
                 }
             }, 1000);
         }
@@ -906,8 +943,15 @@
             trailPoints = [];
             document.getElementById('trail').innerHTML = '';
             
-            // Show game over screen
+            // Calculate accuracy
+            const totalTokensSliced = goodTokensSliced + badTokensSliced;
+            const accuracy = totalTokensSliced > 0 ? Math.round((goodTokensSliced / totalTokensSliced) * 100) : 0;
+            
+            // Show game over screen with statistics
             document.getElementById('finalScore').textContent = score;
+            document.getElementById('goodTokens').textContent = goodTokensSliced;
+            document.getElementById('badTokens').textContent = badTokensSliced;
+            document.getElementById('accuracy').textContent = accuracy + '%';
             document.getElementById('gameOverScreen').style.display = 'flex';
         }
 
@@ -916,6 +960,8 @@
             combo = 0;
             comboTimer = 0;
             gameTime = 45;
+            goodTokensSliced = 0;
+            badTokensSliced = 0;
             trailPoints = [];
             
             // Clear trail visual
