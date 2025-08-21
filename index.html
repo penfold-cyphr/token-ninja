@@ -341,12 +341,14 @@
             // Handle start button
             startButton.addEventListener('click', (e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 resetGame();
                 startCountdown();
             });
             
             startButton.addEventListener('touchend', (e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 resetGame();
                 startCountdown();
             });
@@ -354,6 +356,7 @@
             // Handle play again button
             playAgainButton.addEventListener('click', (e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 document.getElementById('gameOverScreen').style.display = 'none';
                 resetGame();
                 startCountdown();
@@ -361,6 +364,7 @@
             
             playAgainButton.addEventListener('touchend', (e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 document.getElementById('gameOverScreen').style.display = 'none';
                 resetGame();
                 startCountdown();
@@ -827,13 +831,14 @@
         }
 
         function startCountdown() {
-            // Prevent multiple calls and hide other screens
+            // Hide all screens first
             document.getElementById('startScreen').style.display = 'none';
             document.getElementById('gameOverScreen').style.display = 'none';
             document.getElementById('countdownScreen').style.display = 'flex';
             
             let count = 3;
             const countdownElement = document.getElementById('countdownNumber');
+            let countdownInterval;
             
             // Function to update display
             function updateCountdown() {
@@ -851,6 +856,7 @@
                     countdownElement.offsetHeight; // Trigger reflow
                     countdownElement.style.animation = 'pulse 1s ease-in-out';
                     setTimeout(() => {
+                        clearInterval(countdownInterval);
                         startGame();
                     }, 1000);
                     return; // Stop the interval
@@ -861,7 +867,7 @@
             updateCountdown();
             
             // Continue countdown every second
-            const countdownInterval = setInterval(() => {
+            countdownInterval = setInterval(() => {
                 if (count >= 0) {
                     updateCountdown();
                     if (count < 0) {
@@ -872,22 +878,35 @@
         }
 
         function startGame() {
+            // Ensure clean start
+            gameStarted = false;
+            
+            // Clear any existing intervals first
+            if (gameTimer) {
+                clearInterval(gameTimer);
+                gameTimer = null;
+            }
+            coinSpawners.forEach(interval => clearInterval(interval));
+            coinSpawners = [];
+            
+            // Now start the game
             gameStarted = true;
             gameTime = 45;
             document.getElementById('countdownScreen').style.display = 'none';
             document.body.style.cursor = 'none';
             
-            // Clear any existing spawners
-            coinSpawners.forEach(interval => clearInterval(interval));
-            coinSpawners = [];
+            // Update UI immediately
+            updateUI();
             
             // Start game timer
             gameTimer = setInterval(() => {
-                gameTime--;
-                updateUI();
-                
-                if (gameTime <= 0) {
-                    endGame();
+                if (gameStarted) { // Double check game is still running
+                    gameTime--;
+                    updateUI();
+                    
+                    if (gameTime <= 0) {
+                        endGame();
+                    }
                 }
             }, 1000);
             
@@ -898,10 +917,10 @@
                     
                     // Sometimes spawn multiple coins at once
                     if (Math.random() < 0.3) {
-                        setTimeout(() => createCoin(), 100);
+                        setTimeout(() => { if (gameStarted) createCoin(); }, 100);
                     }
                     if (Math.random() < 0.15) {
-                        setTimeout(() => createCoin(), 200);
+                        setTimeout(() => { if (gameStarted) createCoin(); }, 200);
                     }
                 }
             }, 500));
@@ -917,7 +936,7 @@
             coinSpawners.push(setInterval(() => {
                 if (gameStarted && Math.random() < 0.2) { // 20% chance for burst
                     for (let i = 0; i < 3; i++) {
-                        setTimeout(() => createCoin(), i * 150);
+                        setTimeout(() => { if (gameStarted) createCoin(); }, i * 150);
                     }
                 }
             }, 2000));
@@ -956,6 +975,24 @@
         }
 
         function resetGame() {
+            // Stop any existing game
+            gameStarted = false;
+            
+            // Clear all intervals
+            if (gameTimer) {
+                clearInterval(gameTimer);
+                gameTimer = null;
+            }
+            coinSpawners.forEach(interval => clearInterval(interval));
+            coinSpawners = [];
+            
+            // Clear all coins and particles
+            coins.forEach(coin => scene.remove(coin));
+            particles.forEach(particle => scene.remove(particle));
+            coins = [];
+            particles = [];
+            
+            // Reset game variables
             score = 0;
             combo = 0;
             comboTimer = 0;
@@ -966,6 +1003,9 @@
             
             // Clear trail visual
             document.getElementById('trail').innerHTML = '';
+            
+            // Reset cursor
+            document.body.style.cursor = 'auto';
             
             updateUI();
         }
