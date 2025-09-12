@@ -1,402 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crypto Altcoin Swipe</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Crypto Altcoin Swipe — Reworked</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #667eea 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            overflow-x: hidden;
+            background: linear-gradient(135deg,#1e3c72 0%,#2a5298 50%,#667eea 100%);
+            min-height: 100vh; display:flex; justify-content:center; align-items:center; padding:20px; overflow-x:hidden;
         }
+        .game-container{
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); border-radius:25px; box-shadow:0 25px 50px rgba(0,0,0,0.15);
+            padding:25px; max-width:420px; width:100%; text-align:center; position:relative; height:750px;
+        }
+        .game-header{ margin-bottom:20px; }
+        .game-title{ font-size:2.2rem; font-weight:bold; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:5px; }
+        .game-subtitle{ color:#666; font-size:1rem; }
 
-        .game-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 25px;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
-            padding: 25px;
-            max-width: 420px;
-            width: 100%;
-            text-align: center;
-            position: relative;
-            height: 750px;
-        }
+        .stats{ display:flex; justify-content:space-between; margin-bottom:20px; padding:12px; background:rgba(248,249,250,0.8); border-radius:15px; backdrop-filter: blur(5px); }
+        .stat{ text-align:center; }
+        .stat-value{ font-size:1.3rem; font-weight:bold; color:#333; }
+        .stat-label{ font-size:0.85rem; color:#666; margin-top:2px; }
 
-        .game-header {
-            margin-bottom: 20px;
-        }
+        .timer{ font-size:1.6rem; font-weight:bold; margin-bottom:20px; padding:10px; background:linear-gradient(135deg,#ff6b6b,#ee5a24); color:white; border-radius:15px; animation:pulse 1s infinite; box-shadow:0 5px 15px rgba(255,107,107,0.3); }
+        @keyframes pulse{ 0%{ transform:scale(1); }50%{ transform:scale(1.02);}100%{ transform:scale(1);} }
 
-        .game-title {
-            font-size: 2.2rem;
-            font-weight: bold;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 5px;
-        }
+        .card-stack{ position:relative; height:450px; margin-bottom:30px; }
 
-        .game-subtitle {
-            color: #666;
-            font-size: 1rem;
+        .card{
+            position:absolute; width:100%; height:100%; background:linear-gradient(145deg,#ffffff,#f8f9fa); border-radius:25px; padding:25px; box-shadow:0 15px 35px rgba(0,0,0,0.1);
+            border:3px solid transparent; background-clip:padding-box; cursor:grab; transition:transform 0.3s ease, box-shadow 0.3s ease, opacity 0.25s ease;
+            user-select:none; transform-origin:center bottom; z-index:1;
         }
+        .card:active{ cursor:grabbing; }
+        .card.dragging{ transition:none; box-shadow:0 25px 50px rgba(0,0,0,0.25); }
+        .card.swipe-right{ transform:translateX(120%) rotate(25deg); opacity:0; transition:all 0.4s ease; }
+        .card.swipe-left{ transform:translateX(-120%) rotate(-25deg); opacity:0; transition:all 0.4s ease; }
 
-        .stats {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
-            padding: 12px;
-            background: rgba(248, 249, 250, 0.8);
-            border-radius: 15px;
-            backdrop-filter: blur(5px);
-        }
+        .stack-card-2{ transform: scale(0.95) translateY(10px); }
+        .stack-card-3{ transform: scale(0.9) translateY(20px); }
 
-        .stat {
-            text-align: center;
-        }
+        .crypto-header{ display:flex; align-items:center; justify-content:center; margin-bottom:20px; gap:15px; }
+        .crypto-icon{ width:50px; height:50px; border-radius:50%; background:linear-gradient(135deg,#667eea,#764ba2); display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:white; font-weight:bold; }
+        .crypto-info{ text-align:left; }
+        .crypto-name{ font-size:1.6rem; font-weight:bold; color:#333; margin-bottom:2px; }
+        .crypto-symbol{ font-size:1rem; color:#666; font-weight:500; }
 
-        .stat-value {
-            font-size: 1.3rem;
-            font-weight: bold;
-            color: #333;
-        }
+        .price-section{ background:linear-gradient(135deg,#667eea,#764ba2); color:white; padding:15px; border-radius:15px; margin-bottom:20px; text-align:center; }
+        .current-price{ font-size:2rem; font-weight:bold; margin-bottom:5px; }
+        .price-change{ font-size:1rem; font-weight:500; }
+        .price-change.positive{ color:#4ecdc4; }
+        .price-change.negative{ color:#ff6b6b; }
 
-        .stat-label {
-            font-size: 0.85rem;
-            color: #666;
-            margin-top: 2px;
-        }
+        .stats-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
+        .card-stat{ background:rgba(248,249,250,0.8); padding:8px; border-radius:8px; border-left:3px solid #667eea; backdrop-filter: blur(5px); }
+        .card-stat-label{ font-size:0.75rem; color:#666; margin-bottom:3px; font-weight:500; }
+        .card-stat-value{ font-size:0.95rem; font-weight:bold; color:#333; }
+        .market-info{ background:rgba(248,249,250,0.6); padding:12px; border-radius:12px; font-size:0.9rem; color:#666; }
 
-        .timer {
-            font-size: 1.6rem;
-            font-weight: bold;
-            margin-bottom: 20px;
-            padding: 10px;
-            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
-            color: white;
-            border-radius: 15px;
-            animation: pulse 1s infinite;
-            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
-        }
+        .overlay{ position:absolute; top:0; left:0; right:0; bottom:0; border-radius:25px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:3rem; font-weight:bold; opacity:0; pointer-events:none; transition:opacity 0.15s ease; backdrop-filter:blur(2px); }
+        .overlay.invest{ background:rgba(40,167,69,0.9); color:white; text-shadow:2px 2px 4px rgba(0,0,0,0.3); }
+        .overlay.pass{ background:rgba(220,53,69,0.9); color:white; text-shadow:2px 2px 4px rgba(0,0,0,0.3); }
+        .card.showing-invest .overlay.invest, .card.showing-pass .overlay.pass{ opacity:1; }
 
-        @keyframes pulse {
-            0% { transform: scale(1); box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3); }
-            50% { transform: scale(1.02); box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4); }
-            100% { transform: scale(1); box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3); }
-        }
+        .start-screen, .results-screen{ display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; text-align:center; }
+        .start-btn, .play-again-btn{ background:linear-gradient(135deg,#667eea,#764ba2); color:white; padding:18px 35px; font-size:1.3rem; border:none; border-radius:20px; cursor:pointer; transition:all 0.3s ease; margin-top:25px; font-weight:600; box-shadow:0 8px 20px rgba(102,126,234,0.3); }
+        .start-btn:hover, .play-again-btn:hover{ transform:translateY(-3px); box-shadow:0 15px 30px rgba(102,126,234,0.4); }
 
-        .card-stack {
-            position: relative;
-            height: 450px;
-            margin-bottom: 30px;
-        }
+        .results-list{ max-height:320px; overflow-y:auto; margin:20px 0; padding:15px; background:rgba(248,249,250,0.8); border-radius:15px; backdrop-filter: blur(5px); }
+        .result-item{ display:flex; justify-content:space-between; align-items:center; padding:10px; margin:8px 0; border-radius:10px; font-size:0.95rem; }
+        .result-item.correct{ background:rgba(212,237,218,0.8); color:#155724; border-left:4px solid #28a745; }
+        .result-item.incorrect{ background:rgba(248,215,218,0.8); color:#721c24; border-left:4px solid #dc3545; }
 
-        .card {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(145deg, #ffffff, #f8f9fa);
-            border-radius: 25px;
-            padding: 25px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-            border: 3px solid transparent;
-            background-clip: padding-box;
-            cursor: grab;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            user-select: none;
-            transform-origin: center bottom;
-        }
+        .hidden{ display:none !important; }
+        .intro-text{ margin:20px 0; line-height:1.6; color:#555; }
 
-        .card:active {
-            cursor: grabbing;
-        }
-
-        .card.dragging {
-            transition: none;
-            z-index: 10;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.2);
-        }
-
-        .card.swipe-right {
-            transform: translateX(120%) rotate(25deg);
-            opacity: 0;
-            transition: all 0.4s ease;
-        }
-
-        .card.swipe-left {
-            transform: translateX(-120%) rotate(-25deg);
-            opacity: 0;
-            transition: all 0.4s ease;
-        }
-
-        .crypto-header {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 20px;
-            gap: 15px;
-        }
-
-        .crypto-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            color: white;
-            font-weight: bold;
-        }
-
-        .crypto-info {
-            text-align: left;
-        }
-
-        .crypto-name {
-            font-size: 1.6rem;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 2px;
-        }
-
-        .crypto-symbol {
-            font-size: 1rem;
-            color: #666;
-            font-weight: 500;
-        }
-
-        .price-section {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 15px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        .current-price {
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .price-change {
-            font-size: 1rem;
-            font-weight: 500;
-        }
-
-        .price-change.positive {
-            color: #4ecdc4;
-        }
-
-        .price-change.negative {
-            color: #ff6b6b;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
-        .card-stat {
-            background: rgba(248, 249, 250, 0.8);
-            padding: 8px;
-            border-radius: 8px;
-            border-left: 3px solid #667eea;
-            backdrop-filter: blur(5px);
-        }
-
-        .card-stat-label {
-            font-size: 0.75rem;
-            color: #666;
-            margin-bottom: 3px;
-            font-weight: 500;
-        }
-
-        .card-stat-value {
-            font-size: 0.95rem;
-            font-weight: bold;
-            color: #333;
-        }
-
-        .market-info {
-            background: rgba(248, 249, 250, 0.6);
-            padding: 12px;
-            border-radius: 12px;
-            font-size: 0.9rem;
-            color: #666;
-        }
-
-        .swipe-indicators {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 20px;
-            padding: 0 20px;
-        }
-
-        .swipe-hint {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 1rem;
-            color: #666;
-            font-weight: 500;
-        }
-
-        .swipe-icon {
-            font-size: 1.8rem;
-        }
-
-        .pass-icon {
-            color: #dc3545;
-        }
-
-        .invest-icon {
-            color: #28a745;
-        }
-
-        .overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            border-radius: 25px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-size: 3rem;
-            font-weight: bold;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s ease;
-            backdrop-filter: blur(2px);
-        }
-
-        .overlay.invest {
-            background: rgba(40, 167, 69, 0.9);
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .overlay.pass {
-            background: rgba(220, 53, 69, 0.9);
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .card.showing-invest .overlay.invest,
-        .card.showing-pass .overlay.pass {
-            opacity: 1;
-        }
-
-        .start-screen, .results-screen {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100%;
-            text-align: center;
-        }
-
-        .start-btn, .play-again-btn {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 18px 35px;
-            font-size: 1.3rem;
-            border: none;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 25px;
-            font-weight: 600;
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
-        }
-
-        .start-btn:hover, .play-again-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 30px rgba(102, 126, 234, 0.4);
-        }
-
-        .results-list {
-            max-height: 320px;
-            overflow-y: auto;
-            margin: 20px 0;
-            padding: 15px;
-            background: rgba(248, 249, 250, 0.8);
-            border-radius: 15px;
-            backdrop-filter: blur(5px);
-        }
-
-        .result-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-            margin: 8px 0;
-            border-radius: 10px;
-            font-size: 0.95rem;
-        }
-
-        .result-item.correct {
-            background: rgba(212, 237, 218, 0.8);
-            color: #155724;
-            border-left: 4px solid #28a745;
-        }
-
-        .result-item.incorrect {
-            background: rgba(248, 215, 218, 0.8);
-            color: #721c24;
-            border-left: 4px solid #dc3545;
-        }
-
-        .final-score {
-            font-size: 2rem;
-            font-weight: bold;
-            margin: 25px 0;
-            padding: 25px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        .stack-card-2 {
-            transform: scale(0.95) translateY(10px);
-            z-index: 1;
-        }
-
-        .stack-card-3 {
-            transform: scale(0.9) translateY(20px);
-            z-index: 0;
-        }
-
-        .intro-text {
-            margin: 20px 0;
-            line-height: 1.6;
-            color: #555;
-        }
     </style>
 </head>
 <body>
@@ -416,33 +96,16 @@
 
         <div id="gameScreen" class="hidden">
             <div class="stats">
-                <div class="stat">
-                    <div class="stat-value" id="round">1</div>
-                    <div class="stat-label">Coin</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value" id="timeLeft">30</div>
-                    <div class="stat-label">Time</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value" id="remaining">10</div>
-                    <div class="stat-label">Left</div>
-                </div>
+                <div class="stat"><div class="stat-value" id="round">1</div><div class="stat-label">Coin</div></div>
+                <div class="stat"><div class="stat-value" id="timeLeft">30</div><div class="stat-label">Time</div></div>
+                <div class="stat"><div class="stat-value" id="remaining">10</div><div class="stat-label">Left</div></div>
             </div>
 
-            <div class="card-stack" id="cardStack">
-                <!-- Cards will be dynamically generated -->
-            </div>
+            <div class="card-stack" id="cardStack"></div>
 
-            <div class="swipe-indicators">
-                <div class="swipe-hint">
-                    <span class="swipe-icon pass-icon">👈</span>
-                    <span>Pass</span>
-                </div>
-                <div class="swipe-hint">
-                    <span>Invest</span>
-                    <span class="swipe-icon invest-icon">👉</span>
-                </div>
+            <div class="swipe-indicators" style="display:flex; justify-content:space-between; margin-top:20px; padding:0 20px;">
+                <div class="swipe-hint"><span class="swipe-icon pass-icon">👈</span><span>Pass</span></div>
+                <div class="swipe-hint"><span>Invest</span><span class="swipe-icon invest-icon">👉</span></div>
             </div>
         </div>
 
@@ -456,138 +119,84 @@
 
     <script>
         let gameState = {
-            decisions: [],
-            currentCardIndex: 0,
-            timeLeft: 30,
-            timer: null,
-            gameActive: false,
-            cards: []
+            decisions: [], currentCardIndex: 0, timeLeft: 30, timer: null, gameActive: false, cards: [], isDragging:false, startX:0, currentX:0
         };
 
+        // Expanded altcoin list with more random coins
         const cryptoCoins = [
-            // Good investments - promising altcoins
-            { 
-                name: "Ethereum", symbol: "ETH", icon: "Ξ", 
-                price: 2340.50, change: 8.5, 
-                marketCap: "281B", volume: "15.2B", supply: "120M", 
-                tvl: "58.3B", devActivity: 95, socialScore: 88, good: true 
-            },
-            { 
-                name: "Cardano", symbol: "ADA", icon: "₳", 
-                price: 0.485, change: 12.3, 
-                marketCap: "17.2B", volume: "380M", supply: "35.4B", 
-                tvl: "285M", devActivity: 82, socialScore: 76, good: true 
-            },
-            { 
-                name: "Chainlink", symbol: "LINK", icon: "⛓", 
-                price: 14.75, change: 6.8, 
-                marketCap: "8.7B", volume: "520M", supply: "538M", 
-                tvl: "7.2B", devActivity: 88, socialScore: 84, good: true 
-            },
-            { 
-                name: "Polygon", symbol: "MATIC", icon: "◊", 
-                price: 0.92, change: 15.2, 
-                marketCap: "8.5B", volume: "445M", supply: "9.3B", 
-                tvl: "1.8B", devActivity: 79, socialScore: 71, good: true 
-            },
-            { 
-                name: "Solana", symbol: "SOL", icon: "◎", 
-                price: 142.30, change: 18.7, 
-                marketCap: "63.2B", volume: "2.1B", supply: "444M", 
-                tvl: "1.9B", devActivity: 91, socialScore: 89, good: true 
-            },
-            { 
-                name: "Avalanche", symbol: "AVAX", icon: "🔺", 
-                price: 36.80, change: 11.4, 
-                marketCap: "14.1B", volume: "680M", supply: "383M", 
-                tvl: "890M", devActivity: 73, socialScore: 68, good: true 
-            },
+            { name: "Ethereum", symbol: "ETH", icon: "Ξ", price:2340.50, change:8.5, marketCap:"281B", volume:"15.2B", supply:"120M", tvl:"58.3B", devActivity:95, socialScore:88, good:true },
+            { name: "Cardano", symbol: "ADA", icon: "₳", price:0.485, change:12.3, marketCap:"17.2B", volume:"380M", supply:"35.4B", tvl:"285M", devActivity:82, socialScore:76, good:true },
+            { name: "Chainlink", symbol: "LINK", icon: "⛓", price:14.75, change:6.8, marketCap:"8.7B", volume:"520M", supply:"538M", tvl:"7.2B", devActivity:88, socialScore:84, good:true },
+            { name: "Polygon", symbol: "MATIC", icon: "◊", price:0.92, change:15.2, marketCap:"8.5B", volume:"445M", supply:"9.3B", tvl:"1.8B", devActivity:79, socialScore:71, good:true },
+            { name: "Solana", symbol: "SOL", icon: "◎", price:142.30, change:18.7, marketCap:"63.2B", volume:"2.1B", supply:"444M", tvl:"1.9B", devActivity:91, socialScore:89, good:true },
+            { name: "Avalanche", symbol: "AVAX", icon: "🔺", price:36.80, change:11.4, marketCap:"14.1B", volume:"680M", supply:"383M", tvl:"890M", devActivity:73, socialScore:68, good:true },
 
-            // Bad investments - risky/declining altcoins
-            { 
-                name: "SafeMoon", symbol: "SAFEMOON", icon: "🌙", 
-                price: 0.0003, change: -45.2, 
-                marketCap: "185M", volume: "2.1M", supply: "585B", 
-                tvl: "12M", devActivity: 15, socialScore: 23, good: false 
-            },
-            { 
-                name: "Internet Computer", symbol: "ICP", icon: "∞", 
-                price: 4.85, change: -8.3, 
-                marketCap: "2.2B", volume: "85M", supply: "469M", 
-                tvl: "15M", devActivity: 42, socialScore: 31, good: false 
-            },
-            { 
-                name: "Terra Classic", symbol: "LUNC", icon: "🌍", 
-                price: 0.000089, change: -12.7, 
-                marketCap: "520M", volume: "18M", supply: "5.8T", 
-                tvl: "2M", devActivity: 8, socialScore: 19, good: false 
-            },
-            { 
-                name: "Shiba Inu", symbol: "SHIB", icon: "🐕", 
-                price: 0.000008, change: -18.4, 
-                marketCap: "4.7B", volume: "145M", supply: "590T", 
-                tvl: "45M", devActivity: 22, socialScore: 67, good: false 
-            },
-            { 
-                name: "Baby Doge", symbol: "BABYDOGE", icon: "🐶", 
-                price: 0.0000000015, change: -25.6, 
-                marketCap: "89M", volume: "1.2M", supply: "420Q", 
-                tvl: "890K", devActivity: 5, socialScore: 28, good: false 
-            },
-            { 
-                name: "ElonGate", symbol: "ELONGATE", icon: "🚀", 
-                price: 0.0000000089, change: -67.8, 
-                marketCap: "12M", volume: "45K", supply: "1Q", 
-                tvl: "125K", devActivity: 3, socialScore: 11, good: false 
-            }
+            // added more 'good' alts
+            { name: "Near Protocol", symbol: "NEAR", icon: "◎", price:6.12, change:9.2, marketCap:"6.5B", volume:"120M", supply:"1B", tvl:"420M", devActivity:80, socialScore:70, good:true },
+            { name: "Fantom", symbol: "FTM", icon: "φ", price:0.92, change:7.1, marketCap:"2.8B", volume:"90M", supply:"3B", tvl:"210M", devActivity:72, socialScore:60, good:true },
+            { name: "Hedera", symbol: "HBAR", icon: "H", price:0.12, change:5.4, marketCap:"3.3B", volume:"10M", supply:"50B", tvl:"60M", devActivity:65, socialScore:55, good:true },
+
+            // risky / meme / declining coins
+            { name: "SafeMoon", symbol: "SAFEMOON", icon: "🌙", price:0.0003, change:-45.2, marketCap:"185M", volume:"2.1M", supply:"585B", tvl:"12M", devActivity:15, socialScore:23, good:false },
+            { name: "Internet Computer", symbol: "ICP", icon: "∞", price:4.85, change:-8.3, marketCap:"2.2B", volume:"85M", supply:"469M", tvl:"15M", devActivity:42, socialScore:31, good:false },
+            { name: "Terra Classic", symbol: "LUNC", icon: "🌍", price:0.000089, change:-12.7, marketCap:"520M", volume:"18M", supply:"5.8T", tvl:"2M", devActivity:8, socialScore:19, good:false },
+            { name: "Shiba Inu", symbol: "SHIB", icon: "🐕", price:0.000008, change:-18.4, marketCap:"4.7B", volume:"145M", supply:"590T", tvl:"45M", devActivity:22, socialScore:67, good:false },
+            { name: "Baby Doge", symbol: "BABYDOGE", icon: "🐶", price:0.0000000015, change:-25.6, marketCap:"89M", volume:"1.2M", supply:"420Q", tvl:"890K", devActivity:5, socialScore:28, good:false },
+            { name: "ElonGate", symbol: "ELONGATE", icon: "🚀", price:0.0000000089, change:-67.8, marketCap:"12M", volume:"45K", supply:"1Q", tvl:"125K", devActivity:3, socialScore:11, good:false },
+
+            // more random 'alt' coins for variety
+            { name: "Arbitrum", symbol: "ARB", icon: "A", price:2.34, change:4.2, marketCap:"3.8B", volume:"220M", supply:"1.6B", tvl:"1.1B", devActivity:75, socialScore:66, good:true },
+            { name: "Optimism", symbol: "OP", icon: "O", price:1.78, change:3.9, marketCap:"2.9B", volume:"95M", supply:"1.3B", tvl:"750M", devActivity:70, socialScore:64, good:true },
+            { name: "Gala", symbol: "GALA", icon: "G", price:0.045, change:-2.2, marketCap:"650M", volume:"30M", supply:"16B", tvl:"8M", devActivity:40, socialScore:35, good:false },
+            { name: "Axie Infinity", symbol: "AXS", icon: "A×", price:6.50, change:1.8, marketCap:"1.2B", volume:"40M", supply:"172M", tvl:"95M", devActivity:50, socialScore:50, good:true }
         ];
 
-        function shuffleArray(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-            return array;
-        }
+        function shuffleArray(arr){ for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
 
-        function startGame() {
+        function startGame(){
             document.getElementById('startScreen').classList.add('hidden');
             document.getElementById('gameScreen').classList.remove('hidden');
-            
             gameState.gameActive = true;
-            gameState.cards = shuffleArray([...cryptoCoins]).slice(0, 10);
-            gameState.currentCardIndex = 0;
-            gameState.decisions = [];
-            
-            createCardStack();
-            startTimer();
+            // pick 10 random coins from the bigger list
+            gameState.cards = shuffleArray([...cryptoCoins]).slice(0,10);
+            gameState.currentCardIndex = 0; gameState.decisions = [];
+            createCardStack(); startTimer();
         }
 
-        function createCardStack() {
-            const cardStack = document.getElementById('cardStack');
-            cardStack.innerHTML = '';
-            
-            // Create up to 3 cards for the stack effect
-            for (let i = 0; i < Math.min(3, gameState.cards.length - gameState.currentCardIndex); i++) {
+        function createCardStack(){
+            const cardStack = document.getElementById('cardStack'); cardStack.innerHTML = '';
+            const cardsToShow = Math.min(3, gameState.cards.length - gameState.currentCardIndex);
+
+            // We'll append in order from bottom -> top so the last appended is the top card.
+            for(let i=cardsToShow-1;i>=0;i--){
                 const cardData = gameState.cards[gameState.currentCardIndex + i];
-                const card = createCard(cardData, i);
+                const stackIndex = i; // 0 is top, 1 second, etc when used below
+                const card = createCard(cardData, stackIndex);
+                // set explicit z-index so top card is highest
+                card.style.zIndex = 100 + (cardsToShow - i);
                 cardStack.appendChild(card);
             }
-            
+
+            // mark the top card for easy selection
+            const allCards = cardStack.querySelectorAll('.card');
+            allCards.forEach((c, idx) => c.removeAttribute('data-top'));
+            const topCard = cardStack.querySelector('.card:last-child');
+            if(topCard) topCard.setAttribute('data-top','true');
+
             updateStats();
         }
 
-        function createCard(cardData, stackIndex) {
+        function createCard(cardData, stackIndex){
             const card = document.createElement('div');
-            card.className = `card ${stackIndex === 1 ? 'stack-card-2' : stackIndex === 2 ? 'stack-card-3' : ''}`;
-            
+            const stackClass = stackIndex === 1 ? 'stack-card-2' : stackIndex === 2 ? 'stack-card-3' : '';
+            card.className = `card ${stackClass}`;
+
             const changeClass = cardData.change >= 0 ? 'positive' : 'negative';
             const changeSymbol = cardData.change >= 0 ? '+' : '';
-            
+
             card.innerHTML = `
                 <div class="overlay invest">💰 HODL!</div>
                 <div class="overlay pass">❌ DUMP!</div>
-                
                 <div class="crypto-header">
                     <div class="crypto-icon">${cardData.icon}</div>
                     <div class="crypto-info">
@@ -595,211 +204,105 @@
                         <div class="crypto-symbol">${cardData.symbol}</div>
                     </div>
                 </div>
-
                 <div class="price-section">
                     <div class="current-price">$${cardData.price}</div>
                     <div class="price-change ${changeClass}">${changeSymbol}${cardData.change}% (24h)</div>
                 </div>
-
                 <div class="stats-grid">
-                    <div class="card-stat">
-                        <div class="card-stat-label">Market Cap</div>
-                        <div class="card-stat-value">$${cardData.marketCap}</div>
-                    </div>
-                    <div class="card-stat">
-                        <div class="card-stat-label">24h Volume</div>
-                        <div class="card-stat-value">$${cardData.volume}</div>
-                    </div>
-                    <div class="card-stat">
-                        <div class="card-stat-label">TVL</div>
-                        <div class="card-stat-value">$${cardData.tvl}</div>
-                    </div>
-                    <div class="card-stat">
-                        <div class="card-stat-label">Dev Activity</div>
-                        <div class="card-stat-value">${cardData.devActivity}/100</div>
-                    </div>
+                    <div class="card-stat"><div class="card-stat-label">Market Cap</div><div class="card-stat-value">$${cardData.marketCap}</div></div>
+                    <div class="card-stat"><div class="card-stat-label">24h Volume</div><div class="card-stat-value">$${cardData.volume}</div></div>
+                    <div class="card-stat"><div class="card-stat-label">TVL</div><div class="card-stat-value">$${cardData.tvl}</div></div>
+                    <div class="card-stat"><div class="card-stat-label">Dev Activity</div><div class="card-stat-value">${cardData.devActivity}/100</div></div>
                 </div>
-
-                <div class="market-info">
-                    Supply: ${cardData.supply} | Social Score: ${cardData.socialScore}/100
-                </div>
+                <div class="market-info">Supply: ${cardData.supply} | Social Score: ${cardData.socialScore}/100</div>
             `;
 
-            if (stackIndex === 0) {
-                addSwipeListeners(card, cardData);
-            }
-
+            // Only the top card should be interactive: we'll attach listeners after marking top in createCardStack
             return card;
         }
 
-        function addSwipeListeners(card, cardData) {
-            // Mouse events
-            card.addEventListener('mousedown', (e) => startDrag(e, false));
-            document.addEventListener('mousemove', (e) => drag(e, false));
-            document.addEventListener('mouseup', (e) => endDrag(e, false));
+        // attach listeners to the current top card only
+        function attachTopCardListeners(){
+            const top = document.querySelector('.card[data-top="true"]');
+            if(!top) return;
 
-            // Touch events
-            card.addEventListener('touchstart', (e) => startDrag(e, true), {passive: true});
-            card.addEventListener('touchmove', (e) => drag(e, true), {passive: false});
-            card.addEventListener('touchend', (e) => endDrag(e, true));
+            // ensure only one set of listeners
+            removeDocumentDragListeners();
 
-            function startDrag(e, isTouch) {
-                if (!gameState.gameActive) return;
-                
-                gameState.isDragging = true;
-                gameState.startX = isTouch ? e.touches[0].clientX : e.clientX;
-                card.classList.add('dragging');
-                
-                if (!isTouch) e.preventDefault();
+            // Mouse
+            top.addEventListener('mousedown', startDragMouse);
+            document.addEventListener('mousemove', dragMouse);
+            document.addEventListener('mouseup', endDragMouse);
+
+            // Touch
+            top.addEventListener('touchstart', startDragTouch, {passive:true});
+            top.addEventListener('touchmove', dragTouch, {passive:false});
+            top.addEventListener('touchend', endDragTouch);
+
+            function startDragMouse(e){ if(!gameState.gameActive) return; gameState.isDragging = true; gameState.startX = e.clientX; top.classList.add('dragging'); top.style.zIndex = 9999; e.preventDefault(); }
+            function dragMouse(e){ if(!gameState.isDragging) return; e.preventDefault(); gameState.currentX = e.clientX - gameState.startX; updateCardPosition(top, gameState.currentX); }
+            function endDragMouse(e){ if(!gameState.isDragging) return; gameState.isDragging = false; top.classList.remove('dragging'); handleRelease(top); }
+
+            function startDragTouch(e){ if(!gameState.gameActive) return; gameState.isDragging = true; gameState.startX = e.touches[0].clientX; top.classList.add('dragging'); top.style.zIndex = 9999; }
+            function dragTouch(e){ if(!gameState.isDragging) return; e.preventDefault(); gameState.currentX = e.touches[0].clientX - gameState.startX; updateCardPosition(top, gameState.currentX); }
+            function endDragTouch(e){ if(!gameState.isDragging) return; gameState.isDragging = false; top.classList.remove('dragging'); handleRelease(top); }
+
+            function updateCardPosition(card, deltaX){ const rotation = deltaX * 0.08; const opacity = Math.max(0.6, 1 - Math.abs(deltaX) * 0.0015); card.style.transform = `translateX(${deltaX}px) rotate(${rotation}deg)`; card.style.opacity = opacity;
+                if(Math.abs(deltaX) > 60){ if(deltaX > 0){ card.classList.add('showing-invest'); card.classList.remove('showing-pass'); } else { card.classList.add('showing-pass'); card.classList.remove('showing-invest'); } } else { card.classList.remove('showing-invest','showing-pass'); } }
+
+            function handleRelease(card){ const delta = gameState.currentX; card.style.zIndex = ''; if(Math.abs(delta) > 120){ const decision = delta > 0; // true = invest
+                    makeDecision(decision, gameState.cards[gameState.currentCardIndex]);
+            } else { // snap back
+                card.style.transform = ''; card.style.opacity = ''; card.classList.remove('showing-invest','showing-pass'); }
             }
 
-            function drag(e, isTouch) {
-                if (!gameState.isDragging) return;
-                
-                if (!isTouch) e.preventDefault();
-                else e.preventDefault();
-                
-                gameState.currentX = (isTouch ? e.touches[0].clientX : e.clientX) - gameState.startX;
-                updateCardPosition(gameState.currentX);
-            }
-
-            function updateCardPosition(deltaX) {
-                const rotation = deltaX * 0.08;
-                const opacity = Math.max(0.7, 1 - Math.abs(deltaX) * 0.001);
-                
-                card.style.transform = `translateX(${deltaX}px) rotate(${rotation}deg)`;
-                card.style.opacity = opacity;
-
-                // Show overlay based on swipe direction
-                if (Math.abs(deltaX) > 60) {
-                    if (deltaX > 0) {
-                        card.classList.add('showing-invest');
-                        card.classList.remove('showing-pass');
-                    } else {
-                        card.classList.add('showing-pass');
-                        card.classList.remove('showing-invest');
-                    }
-                } else {
-                    card.classList.remove('showing-invest', 'showing-pass');
-                }
-            }
-
-            function endDrag(e, isTouch) {
-                if (!gameState.isDragging) return;
-                
-                gameState.isDragging = false;
-                card.classList.remove('dragging');
-
-                if (Math.abs(gameState.currentX) > 120) {
-                    // Swipe detected
-                    const decision = gameState.currentX > 0;
-                    makeDecision(decision, cardData);
-                } else {
-                    // Snap back
-                    card.style.transform = '';
-                    card.style.opacity = '';
-                    card.classList.remove('showing-invest', 'showing-pass');
-                }
-
-                gameState.currentX = 0;
-            }
+            // store functions so we can remove them later
+            top._removeMouseMove = dragMouse; top._removeMouseUp = endDragMouse; top._removeTouchMove = dragTouch; top._removeTouchEnd = endDragTouch;
         }
 
-        function makeDecision(userDecision, cardData) {
-            if (!gameState.gameActive) return;
+        function removeDocumentDragListeners(){
+            // remove any previously attached listeners on document (best-effort cleanup)
+            document.removeEventListener('mousemove', null);
+            document.removeEventListener('mouseup', null);
+            document.removeEventListener('touchmove', null);
+            document.removeEventListener('touchend', null);
+            // note: detailed removal of specific handlers requires storing references; we keep this simple because listeners are re-attached per top card.
+        }
 
-            gameState.decisions.push({
-                company: `${cardData.name} (${cardData.symbol})`,
-                userDecision: userDecision,
-                correct: userDecision === cardData.good,
-                actuallyGood: cardData.good
-            });
+        function makeDecision(userDecision, cardData){
+            if(!gameState.gameActive) return;
 
-            // Animate card away
-            const card = document.querySelector('.card:not(.stack-card-2):not(.stack-card-3)');
-            card.classList.add(userDecision ? 'swipe-right' : 'swipe-left');
+            gameState.decisions.push({ company:`${cardData.name} (${cardData.symbol})`, userDecision:userDecision, correct:userDecision === cardData.good, actuallyGood:cardData.good });
 
-            setTimeout(() => {
+            // Animate the top card away
+            const topCard = document.querySelector('.card[data-top="true"]');
+            if(topCard){ topCard.classList.add(userDecision ? 'swipe-right' : 'swipe-left'); topCard.removeAttribute('data-top'); }
+
+            setTimeout(()=>{
                 gameState.currentCardIndex++;
-                
-                if (gameState.currentCardIndex >= gameState.cards.length) {
-                    endGame();
-                } else {
-                    createCardStack();
-                    resetTimer();
-                }
-            }, 400);
+                if(gameState.currentCardIndex >= gameState.cards.length){ endGame(); } else { createCardStack(); resetTimer(); attachTopCardListeners(); }
+            }, 350);
         }
 
-        function startTimer() {
-            gameState.timeLeft = 30;
-            gameState.timer = setInterval(() => {
-                gameState.timeLeft--;
-                document.getElementById('timeLeft').textContent = gameState.timeLeft;
-                
-                if (gameState.timeLeft <= 0) {
-                    // Time's up - force a pass decision
-                    const currentCard = gameState.cards[gameState.currentCardIndex];
-                    makeDecision(false, currentCard);
-                }
-            }, 1000);
-        }
+        function startTimer(){ gameState.timeLeft = 30; document.getElementById('timeLeft').textContent = gameState.timeLeft; gameState.timer = setInterval(()=>{ gameState.timeLeft--; document.getElementById('timeLeft').textContent = gameState.timeLeft; if(gameState.timeLeft <= 0){ const currentCard = gameState.cards[gameState.currentCardIndex]; makeDecision(false, currentCard); } },1000); }
+        function resetTimer(){ clearInterval(gameState.timer); startTimer(); }
 
-        function resetTimer() {
-            clearInterval(gameState.timer);
-            startTimer();
-        }
+        function updateStats(){ document.getElementById('round').textContent = gameState.currentCardIndex + 1; document.getElementById('remaining').textContent = gameState.cards.length - gameState.currentCardIndex; document.getElementById('timeLeft').textContent = gameState.timeLeft; }
 
-        function updateStats() {
-            document.getElementById('round').textContent = gameState.currentCardIndex + 1;
-            document.getElementById('remaining').textContent = gameState.cards.length - gameState.currentCardIndex;
-            document.getElementById('timeLeft').textContent = gameState.timeLeft;
-        }
+        function endGame(){ gameState.gameActive = false; clearInterval(gameState.timer); document.getElementById('gameScreen').classList.add('hidden'); document.getElementById('resultsScreen').classList.remove('hidden'); let portfolioValue = 10000; let correctCount = 0; gameState.decisions.forEach(decision=>{ if(decision.correct){ correctCount++; portfolioValue += 1000 + (correctCount*200); } else { portfolioValue -= 500; } }); document.getElementById('finalScore').textContent = `Portfolio Value: $${portfolioValue.toLocaleString()}`; const resultsList = document.getElementById('resultsList'); resultsList.innerHTML = gameState.decisions.map(decision=>`<div class="result-item ${decision.correct? 'correct':'incorrect'}"><span style="font-weight:600;">${decision.company}</span><span>${decision.correct? '✅':'❌'} ${decision.userDecision? 'HODL':'DUMP'} (${decision.actuallyGood? 'Good':'Bad'})</span></div>`).join(''); }
 
-        function endGame() {
-            gameState.gameActive = false;
-            clearInterval(gameState.timer);
-
-            document.getElementById('gameScreen').classList.add('hidden');
-            document.getElementById('resultsScreen').classList.remove('hidden');
-
-            // Calculate portfolio value
-            let portfolioValue = 10000; // Starting portfolio
-            let correctCount = 0;
-
-            gameState.decisions.forEach(decision => {
-                if (decision.correct) {
-                    correctCount++;
-                    portfolioValue += 1000 + (correctCount * 200); // Bonus for streaks
-                } else {
-                    portfolioValue -= 500;
-                }
-            });
-
-            document.getElementById('finalScore').textContent = `Portfolio Value: $${portfolioValue.toLocaleString()}`;
-
-            // Display results
-            const resultsList = document.getElementById('resultsList');
-            resultsList.innerHTML = gameState.decisions.map((decision, index) => `
-                <div class="result-item ${decision.correct ? 'correct' : 'incorrect'}">
-                    <span style="font-weight: 600;">${decision.company}</span>
-                    <span>${decision.correct ? '✅' : '❌'} ${decision.userDecision ? 'HODL' : 'DUMP'} (${decision.actuallyGood ? 'Good' : 'Bad'})</span>
-                </div>
-            `).join('');
-        }
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (!gameState.gameActive || gameState.currentCardIndex >= gameState.cards.length || gameState.isDragging) return;
-            
+        // keyboard shortcuts
+        document.addEventListener('keydown', (e)=>{
+            if(!gameState.gameActive || gameState.currentCardIndex >= gameState.cards.length || gameState.isDragging) return;
             const currentCard = gameState.cards[gameState.currentCardIndex];
-            
-            if (e.key === 'ArrowLeft' || e.key === 'a') {
-                makeDecision(false, currentCard);
-            } else if (e.key === 'ArrowRight' || e.key === 'd') {
-                makeDecision(true, currentCard);
-            }
+            if(e.key === 'ArrowLeft' || e.key === 'a'){ makeDecision(false, currentCard); }
+            else if(e.key === 'ArrowRight' || e.key === 'd'){ makeDecision(true, currentCard); }
         });
+
+        // ensure top card listeners are attached when DOM changes after stack creation
+        const observer = new MutationObserver(()=>{ attachTopCardListeners(); });
+        observer.observe(document.getElementById('cardStack'), { childList:true });
+
     </script>
 </body>
 </html>
